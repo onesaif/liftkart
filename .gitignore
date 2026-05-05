@@ -1,0 +1,23 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Environment
+.env
+*.env.local
+
+# Node
+node_modules/
+frontend/build/
+frontend/.env.local
+
+# Docker
+docker-compose.override.yml
