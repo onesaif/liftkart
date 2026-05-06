@@ -1,0 +1,229 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: liftkart-postgres
+    environment:
+      POSTGRES_USER: liftkart
+      POSTGRES_PASSWORD: liftkart123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/init-databases.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - liftkart-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liftkart"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: liftkart-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - liftkart-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: liftkart-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - liftkart-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: liftkart-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - liftkart-network
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: ../../docker/Dockerfile.spring
+    container_name: liftkart-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      AUTH_SERVICE_URL: http://liftkart-auth:8081
+      PRODUCT_SERVICE_URL: http://liftkart-product:8082
+      CART_SERVICE_URL: http://liftkart-cart:8083
+      ORDER_SERVICE_URL: http://liftkart-order:8084
+      NOTIFICATION_SERVICE_URL: http://liftkart-notification:8085
+      ANALYTICS_SERVICE_URL: http://liftkart-analytics:8086
+      JWT_SECRET: liftkart-super-secret-key-min-256-bits-change-in-production
+    depends_on:
+      - auth-service
+    networks:
+      - liftkart-network
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: ../../docker/Dockerfile.spring
+    container_name: liftkart-auth
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: liftkart-postgres
+      DB_USER: liftkart
+      DB_PASS: liftkart123
+      RABBITMQ_HOST: liftkart-rabbitmq
+      JWT_SECRET: liftkart-super-secret-key-min-256-bits-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - liftkart-network
+
+  product-service:
+    build:
+      context: ./services/product-service
+      dockerfile: ../../docker/Dockerfile.spring
+    container_name: liftkart-product
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: liftkart-postgres
+      DB_USER: liftkart
+      DB_PASS: liftkart123
+      RABBITMQ_HOST: liftkart-rabbitmq
+      KAFKA_HOST: liftkart-kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - liftkart-network
+
+  cart-service:
+    build:
+      context: ./services/cart-service
+      dockerfile: ../../docker/Dockerfile.spring
+    container_name: liftkart-cart
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: liftkart-postgres
+      DB_USER: liftkart
+      DB_PASS: liftkart123
+      RABBITMQ_HOST: liftkart-rabbitmq
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - liftkart-network
+
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: ../../docker/Dockerfile.spring
+    container_name: liftkart-order
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: liftkart-postgres
+      DB_USER: liftkart
+      DB_PASS: liftkart123
+      RABBITMQ_HOST: liftkart-rabbitmq
+      KAFKA_HOST: liftkart-kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - liftkart-network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: ../../docker/Dockerfile.spring
+    container_name: liftkart-notification
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: liftkart-postgres
+      DB_USER: liftkart
+      DB_PASS: liftkart123
+      RABBITMQ_HOST: liftkart-rabbitmq
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - liftkart-network
+
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: ../../docker/Dockerfile.spring
+    container_name: liftkart-analytics
+    ports:
+      - "8086:8086"
+    environment:
+      DB_HOST: liftkart-postgres
+      DB_USER: liftkart
+      DB_PASS: liftkart123
+      KAFKA_HOST: liftkart-kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - liftkart-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.react
+    container_name: liftkart-frontend
+    ports:
+      - "3000:80"
+    environment:
+      REACT_APP_API_URL: http://localhost:8080
+    depends_on:
+      - api-gateway
+    networks:
+      - liftkart-network
+
+networks:
+  liftkart-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  rabbitmq-data:

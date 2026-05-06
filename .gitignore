@@ -3,16 +3,19 @@ target/
 *.class
 *.jar
 *.war
+.mvn/
 
 # IDE
 .idea/
 *.iml
 .vscode/
 .DS_Store
+*.swp
 
 # Environment
 .env
 *.env.local
+*.env.production
 
 # Node
 node_modules/
@@ -21,3 +24,7 @@ frontend/.env.local
 
 # Docker
 docker-compose.override.yml
+
+# Logs
+*.log
+logs/
