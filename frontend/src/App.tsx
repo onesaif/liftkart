@@ -39,7 +39,18 @@ const ProtectedRoute: React.FC<{
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+    if (isLoading) return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-12 h-12 bg-primary-500 rounded-xl
+                        flex items-center justify-center mx-auto mb-3">
+                        <span className="text-white font-bold text-xl">L</span>
+                    </div>
+                    <p className="text-gray-500 text-sm mt-2">Loading LiftKart...</p>
+                </div>
+            </div>
+        );
 
   return (
       <Routes>

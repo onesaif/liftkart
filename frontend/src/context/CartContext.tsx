@@ -32,6 +32,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
         productId: string, productName: string,
         imageUrl: string, quantity: number, price: number
     ) => {
+        console.log('addToCart called', {productId, productName,price})
         await axiosInstance.post('/api/cart/items', {
             productId, productName, imageUrl, quantity, price,
         });

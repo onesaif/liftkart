@@ -10,7 +10,21 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('accessToken');
-        if (token) config.headers.Authorization = `Bearer ${token}`;
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        // Forward user info as headers (replaces gateway JWT filter)
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                if (user.id)   config.headers['X-User-Id']   = user.id;
+                if (user.role) config.headers['X-User-Role']  = user.role;
+                if (user.email) config.headers['X-User-Email'] = user.email;
+            } catch { /* ignore */ }
+        }
+
         return config;
     },
     (error) => Promise.reject(error)
