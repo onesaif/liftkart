@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -40,36 +41,30 @@ public class CartService {
     public CartResponse addItem(UUID customerId, AddToCartRequest request) {
         Cart cart = getOrCreateCart(customerId);
 
-        // Check if item already exists in cart
-        cartItemRepository.findByCartIdAndProductIdAndIsDeletedFalse(
-                        cart.getId(), request.getProductId())
-                .ifPresentOrElse(
-                        existingItem -> {
-                            // Update quantity if already in cart
-                            existingItem.setQuantity(
-                                    existingItem.getQuantity() + request.getQuantity());
-                            cartItemRepository.save(existingItem);
-                        },
-                        () -> {
-                            // Add new item with price snapshot
-                            CartItem item = CartItem.builder()
-                                    .cart(cart)
-                                    .productId(request.getProductId())
-                                    .productName(request.getProductName())
-                                    .imageUrl(request.getImageUrl())
-                                    .quantity(request.getQuantity())
-                                    .priceSnapshot(request.getPrice())
-                                    .build();
-                            item.setCreatedBy(customerId);
-                            cart.getItems().add(item);
-                        }
-                );
+        // Query DB directly — more reliable than cart.getItems()
+        Optional<CartItem> existingItem = cartItemRepository
+                .findByCartIdAndProductIdAndSavedForLaterFalseAndIsDeletedFalse(
+                        cart.getId(), request.getProductId());
 
-        cart.setLastActivityAt(LocalDateTime.now());
-        cartRepository.save(cart);
+        if (existingItem.isPresent()) {
+            CartItem item = existingItem.get();
+            item.setQuantity(item.getQuantity() + request.getQuantity());
+            cartItemRepository.save(item);
+        } else {
+            CartItem newItem = CartItem.builder()
+                    .cart(cart)
+                    .productId(request.getProductId())
+                    .productName(request.getProductName())
+                    .imageUrl(request.getImageUrl())
+                    .quantity(request.getQuantity())
+                    .priceSnapshot(request.getPrice())
+                    .savedForLater(false)
+                    .build();
+            newItem.setCreatedBy(customerId);
+            cartItemRepository.save(newItem);
+        }
 
-        log.info("Item added to cart for customer: {}", customerId);
-        return mapToResponse(cart);
+        return mapToResponse(getOrCreateCart(customerId));
     }
 
     // ── Update Item Quantity ───────────────────────────────────────
