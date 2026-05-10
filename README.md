@@ -20,7 +20,6 @@
 - [Getting Started](#getting-started)
 - [API Documentation](#api-documentation)
 - [Test Accounts](#test-accounts)
-- [Screenshots](#screenshots)
 
 ---
 
@@ -85,7 +84,7 @@ LiftKart follows a **microservices architecture** with 7 independent Spring Boot
 
 ### Messaging
 
-| Broker | Purpose | Topics/Queues |
+| Broker | Purpose | Topics / Queues |
 |---|---|---|
 | **RabbitMQ** | Task queues | Order notifications, vendor approval, low stock alerts |
 | **Apache Kafka** | Event streaming | Order events, product view events |
@@ -130,7 +129,7 @@ LiftKart follows a **microservices architecture** with 7 independent Spring Boot
 
 ### 🛍️ Product Catalogue
 - Hierarchical category tree
-- Full-text search with category, price filters
+- Full-text search with category and price filters
 - Customer reviews with star ratings
 - Inventory management with audit log
 - Low stock alerts via RabbitMQ
@@ -208,24 +207,58 @@ liftkart/
 ### Quick Start
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/onesaif/liftkart.git
 cd liftkart
 
-# Start infrastructure (PostgreSQL, RabbitMQ, Kafka)
-docker-compose up postgres rabbitmq zookeeper kafka -d
-
-# Start all backend services (Java 22 required)
-export JAVA_HOME=$(/usr/libexec/java_home -v 22)  # macOS
-bash start-all.sh
-
-# Start frontend (separate terminal)
-cd frontend
-npm install
-npm start
+# 2. Set JAVA_HOME to Java 22 (required for Lombok compatibility)
 ```
 
-Wait ~90 seconds for all services to start, then open **http://localhost:3000**
+**macOS:**
+```bash
+export JAVA_HOME=$(/usr/libexec/java_home -v 22)
+export PATH="$JAVA_HOME/bin:$PATH"
+```
+
+**Linux:**
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-22-openjdk-amd64
+export PATH="$JAVA_HOME/bin:$PATH"
+```
+
+**Windows (Command Prompt):**
+```cmd
+set JAVA_HOME=C:\Program Files\Java\jdk-22
+set PATH=%JAVA_HOME%\bin;%PATH%
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-22"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+```
+
+```bash
+# 3. Start everything — Docker infra + all 7 services + React frontend
+bash start-all.sh
+
+# 4. Wait 90 seconds, then verify all services are healthy
+bash check-services.sh
+# All 6 services should return 200
+
+# 5. Open the app
+# macOS
+open http://localhost:3000
+# Linux / Windows — open manually in browser
+```
+
+> **Note:** `start-all.sh` automatically handles Docker Compose (PostgreSQL, RabbitMQ, Zookeeper, Kafka), all 7 Spring Boot services, and the React frontend in one command.
+
+### Stop Everything
+
+```bash
+bash stop-all.sh
+```
 
 ### Service URLs
 
@@ -239,13 +272,13 @@ Wait ~90 seconds for all services to start, then open **http://localhost:3000**
 | Order Swagger | http://localhost:8084/swagger-ui.html |
 | Notification Swagger | http://localhost:8085/swagger-ui.html |
 | Analytics Swagger | http://localhost:8086/swagger-ui.html |
-| RabbitMQ Dashboard | http://localhost:15672 (guest/guest) |
+| RabbitMQ Dashboard | http://localhost:15672 (guest / guest) |
 
 ---
 
 ## API Documentation
 
-All services expose Swagger UI at `/swagger-ui.html`. The API Gateway routes all requests through port 8080.
+All services expose Swagger UI at `/swagger-ui.html`. The API Gateway routes all requests through port **8080**.
 
 ### Key Endpoints
 
@@ -276,22 +309,6 @@ GET    /api/analytics/platform         # Admin dashboard
 
 ---
 
-## Screenshots
-
-| Home Page | Product Detail |
-|---|---|
-| Products grid with category filters | Full product info with Add to Cart |
-
-| Cart | Order Detail |
-|---|---|
-| Items with quantity controls | Status timeline |
-
-| Vendor Dashboard | Admin Dashboard |
-|---|---|
-| Revenue chart (Recharts) | Platform analytics bar chart |
-
----
-
 ## CI/CD
 
 GitHub Actions pipeline runs on every push to `main`:
@@ -300,12 +317,6 @@ GitHub Actions pipeline runs on every push to `main`:
 - Reports build status
 
 See `.github/workflows/ci.yml` for configuration.
-
----
-
-## License
-
-Built for academic purposes — BITS Pilani WILP M.Tech SE ZG503 Assignment, May 2026.
 
 ---
 
