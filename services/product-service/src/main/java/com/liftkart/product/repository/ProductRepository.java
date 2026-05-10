@@ -30,16 +30,18 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     boolean existsBySlug(String slug);
 
     @Query("""
-            SELECT p FROM Product p
-            WHERE p.isDeleted = false
-            AND p.status = 'ACTIVE'
-            AND (:keyword IS NULL OR
-                 LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
-            AND (:categoryId IS NULL OR p.category.id = :categoryId)
-            AND (:minPrice IS NULL OR p.price >= :minPrice)
-            AND (:maxPrice IS NULL OR p.price <= :maxPrice)
-            """)
+        SELECT p FROM Product p
+        WHERE p.isDeleted = false
+        AND p.status = 'ACTIVE'
+        AND (COALESCE(:keyword, '') = ''
+             OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+             OR LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        AND (COALESCE(CAST(:categoryId AS string), '') = ''
+             OR p.category.id = :categoryId)
+        AND (:minPrice IS NULL OR p.price >= :minPrice)
+        AND (:maxPrice IS NULL OR p.price <= :maxPrice)
+        ORDER BY p.createdAt DESC
+        """)
     Page<Product> searchProducts(
             @Param("keyword") String keyword,
             @Param("categoryId") UUID categoryId,
